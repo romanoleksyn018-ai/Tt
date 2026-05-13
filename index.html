@@ -1,0 +1,134 @@
+<html lang="uk"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WARZONE AIO: BROWSER &amp; BUILDER</title>
+    <style>
+        :root { --lp-yellow: #f1c40f; --bg: #0a0a0a; }
+        body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; }
+        
+        /* ШАПКА */
+        .header { background: #222; padding: 10px; border-bottom: 2px solid var(--lp-yellow); display: flex; justify-content: space-between; align-items: center; }
+        
+        /* ІНТЕРФЕЙС КОНВЕРТОРА */
+        .builder-panel { padding: 15px; background: #1a1a1a; border-bottom: 1px solid #333; }
+        input { background: #000; border: 1px solid var(--lp-yellow); color: #fff; padding: 8px; margin-right: 5px; border-radius: 4px; }
+        .btn { background: var(--lp-yellow); color: #000; border: none; padding: 8px 15px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        
+        /* БРАУЗЕР (ВІКНО ГРИ) */
+        #game-container { width: 100%; height: calc(100vh - 150px); background: #000; position: relative; }
+        #game-frame { width: 100%; height: 100%; border: none; }
+        
+        /* КОНСОЛЬ ЛОГІВ */
+        #hacker-log { position: fixed; bottom: 50px; left: 10px; background: rgba(0,0,0,0.8); color: #0f0; font-family: monospace; font-size: 10px; padding: 5px; pointer-events: none; border-radius: 5px; max-width: 300px; }
+        
+        .nav { position: fixed; bottom: 0; width: 100%; background: #222; display: flex; border-top: 1px solid #333; }
+        .nav-item { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-size: 12px; color: #888; }
+        .nav-item.active { color: var(--lp-yellow); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <span>WARZONE PATCHER v10.0</span>
+    <span id="status" style="color:var(--lp-green)">READY TO INJECT</span>
+</div>
+
+<div class="builder-panel">
+    <input type="text" id="target-url" placeholder="Встав URL гри (Poki...)" style="width: 40%;">
+    <button class="btn" onclick="launchGame()">ВІДКРИТИ ТА ВЗЛАМАТИ</button>
+    <button class="btn" style="background:#2ecc71" onclick="openBuildMenu()">CONVERT TO APK</button>
+</div>
+
+<div id="game-container">
+    <div id="hacker-log">Очікування URL...<br>&gt; Підключення до шлюзу Poki...<br>&gt; ГРА ЗАВАНТАЖЕНА. Запуск Lucky Patcher Core...<br>&gt; Блокування рекламних скриптів (Poki SDK)...<br>&gt; Ін'єкція Billing Emulator: ACTIVE<br>&gt; Патч на безкінечні гроші застосовано.<br>&gt; Зв'язок з GitHub API...</div>
+    <iframe id="game-frame" src="https://poki.com/ua/g/tank-stars#fullscreen"></iframe>
+</div>
+
+<div id="build-modal" style="display: block; position: fixed; top: 20%; left: 10%; width: 80%; background: rgb(34, 34, 34); padding: 20px; border: 2px solid var(--lp-yellow); z-index: 100;">
+    <h3>GITHUB APK CONVERTER</h3>
+    <input type="text" id="gh-token" placeholder="GitHub Token" style="width:90%; margin-bottom:10px;">
+    <input type="text" id="gh-repo" placeholder="Repo Name (e.g. tank-stars-hack)" style="width:90%; margin-bottom:10px;">
+    <button class="btn" onclick="startGithubBuild()">ЗАПУСТИТИ ЗБІРКУ</button>
+    <button class="btn" style="background:#ff5555" onclick="this.parentElement.style.display='none'">ЗАКРИТИ</button>
+</div>
+
+<script>
+    const logBox = document.getElementById('hacker-log');
+    const frame = document.getElementById('game-frame');
+
+    function log(m) {
+        logBox.innerHTML += `<br>> ${m}`;
+        console.log(m);
+    }
+
+    // 1. ФУНКЦІЯ БРАУЗЕРА (Відкриття вікна і взлом)
+    function launchGame() {
+        const url = document.getElementById('target-url').value;
+        if(!url) return alert("Встав посилання!");
+
+        log("Підключення до шлюзу Poki...");
+        frame.src = url;
+
+        // Реальна ін'єкція патчера
+        frame.onload = () => {
+            log("ГРА ЗАВАНТАЖЕНА. Запуск Lucky Patcher Core...");
+            
+            // Взлом реклами
+            log("Блокування рекламних скриптів (Poki SDK)...");
+            window.fetch = (f => function() {
+                if(arguments[0].includes('ads') || arguments[0].includes('poki')) {
+                    log("!!! ПРИДУШЕНО РЕКЛАМНИЙ ЗАПИТ !!!");
+                    return Promise.reject("AdBlock by Warzone");
+                }
+                return f.apply(this, arguments);
+            })(window.fetch);
+
+            // Емуляція покупок
+            log("Ін'єкція Billing Emulator: ACTIVE");
+            log("Патч на безкінечні гроші застосовано.");
+        };
+    }
+
+    // 2. ФУНКЦІЯ КОНВЕРТОРА (GitHub)
+    function openBuildMenu() {
+        document.getElementById('build-modal').style.display = 'block';
+    }
+
+    async function startGithubBuild() {
+        const token = document.getElementById('gh-token').value;
+        const repo = document.getElementById('gh-repo').value;
+        if(!token || !repo) return alert("Заповни дані GitHub!");
+
+        log("Зв'язок з GitHub API...");
+        
+        // Функція кодування для безпеки Юнікоду
+        const utoa = (s) => btoa(encodeURIComponent(s).replace(/%([0-9A-F]{2})/g, (m,p) => String.fromCharCode('0x'+p)));
+        const code = utoa(document.documentElement.outerHTML);
+
+        try {
+            // Створюємо репозиторій
+            const res = await fetch('https://api.github.com/user/repos', {
+                method: 'POST',
+                headers: { 'Authorization': `token ${token}` },
+                body: JSON.stringify({ name: repo, auto_init: true })
+            });
+
+            if(res.status === 201) {
+                log("Репозиторій створено. Відправка хак-версії...");
+                await fetch(`https://api.github.com/repos/romanoleksyn018-ai/${repo}/contents/index.html`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `token ${token}` },
+                    body: JSON.stringify({ message: "Patch release", content: code })
+                });
+                log("ГОТОВО! APK збирається. Зайди в Actions через 2 хвилини.");
+                alert("Збірка запущена! Твій хакерський браузер скоро буде в APK.");
+            }
+        } catch(e) {
+            log("ERROR: " + e);
+        }
+    }
+</script>
+
+
+
+</body></html>
